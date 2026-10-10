@@ -16,8 +16,15 @@
       const script = document.currentScript;
       if (script) {
         this.integrationId = script.getAttribute('data-integration') || '';
-        this.siteId = script.getAttribute('data-site') || 'medicare_plus_prod';
-        this.apiBase = script.getAttribute('data-api') || 'http://localhost:8000';
+        this.siteId = script.getAttribute('data-site') || 'medicare_plus_demo';
+        const dataApi = script.getAttribute('data-api');
+        if (dataApi) {
+          this.apiBase = dataApi;
+        } else if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+          this.apiBase = '';
+        } else {
+          this.apiBase = 'http://localhost:8000';
+        }
       }
 
       window.__PATCHWORK_RUNTIME__ = this;

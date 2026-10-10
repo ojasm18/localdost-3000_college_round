@@ -36,14 +36,14 @@ def _audit(db: Session, site_id: str, action: str, entity_type: str,
 
 
 def _ensure_default_site(db: Session):
-    """Create the default MediCare+ site if it doesn't exist."""
-    site = db.query(Site).filter(Site.slug == "medicare_plus_demo").first()
-    if not site:
-        site = Site(slug="medicare_plus_demo", name="MediCare+ Demo")
-        db.add(site)
-        db.commit()
-        db.refresh(site)
-    return site
+    """Create default MediCare+ sites if they don't exist."""
+    for slug, name in [("medicare_plus_demo", "MediCare+ Demo"), ("medicare_plus_prod", "MediCare+ Production")]:
+        site = db.query(Site).filter(Site.slug == slug).first()
+        if not site:
+            site = Site(slug=slug, name=name)
+            db.add(site)
+            db.commit()
+    return db.query(Site).filter(Site.slug == "medicare_plus_demo").first()
 
 
 def _site_summary(site: Site, db: Session):

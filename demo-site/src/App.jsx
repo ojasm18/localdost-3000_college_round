@@ -26,8 +26,10 @@ export default function App() {
   useEffect(() => {
     initAuth();
 
+    const apiBase = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? '' : 'http://localhost:8000');
+
     // Check if backend is alive
-    fetch('http://localhost:8000/api/sites/medicare_plus_demo')
+    fetch(`${apiBase}/api/sites/medicare_plus_demo`)
       .then(res => {
         if (res.ok) setBackendConnected(true);
       })

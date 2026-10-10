@@ -130,12 +130,14 @@ export default function App() {
     { id: 5, time: '1h ago', actor: 'system@medicare.org', action: 'INITIALIZE_SITE', details: 'Site medicare_plus_demo registered with PATCHWORK Runtime' },
   ]);
 
+  const apiBase = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? '' : 'http://localhost:8000');
+
   // Check backend health
   useEffect(() => {
-    fetch('http://localhost:8000/api/sites')
+    fetch(`${apiBase}/api/sites`)
       .then(res => res.ok ? setBackendStatus('connected') : setBackendStatus('offline'))
       .catch(() => setBackendStatus('offline'));
-  }, []);
+  }, [apiBase]);
 
   const togglePatch = (id: string) => {
     setPatches(prev => prev.map(p => {
@@ -158,7 +160,7 @@ export default function App() {
   const handlePublishRelease = async () => {
     try {
       if (backendStatus === 'connected') {
-        await fetch(`http://localhost:8000/api/releases?site_id=${siteSlug}&mode=publish`, {
+        await fetch(`${apiBase}/api/releases?site_id=${siteSlug}&mode=publish`, {
           method: 'POST'
         });
       }
@@ -226,7 +228,7 @@ export default function App() {
 
         <div className="dash-header-actions">
           <a 
-            href="http://localhost:5174" 
+            href={typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? '/demo' : 'http://localhost:5174'} 
             target="_blank" 
             rel="noreferrer" 
             className="btn-open-portal"

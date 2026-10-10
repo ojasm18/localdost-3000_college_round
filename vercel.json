@@ -1,0 +1,21 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "node scripts/build-all.js",
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/demo",
+      "destination": "/demo/index.html"
+    },
+    {
+      "source": "/demo/(.*)",
+      "destination": "/demo/$1"
+    },
+    {
+      "source": "/((?!api|demo|runtime|assets).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

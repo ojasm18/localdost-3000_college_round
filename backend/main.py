@@ -21,21 +21,15 @@ app = FastAPI(title="PATCHWORK API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # Dashboard
-        "http://localhost:5174",  # Demo site
-        "http://localhost:5175",  # Preview
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-        "http://127.0.0.1:5175",
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Mount API routes
+# Mount API routes (with /api and root fallback for versatile serverless routing)
 app.include_router(api_router, prefix="/api")
+app.include_router(api_router)
 
 # Serve the runtime patchwork.js as a static file
 runtime_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "runtime", "src")

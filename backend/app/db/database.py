@@ -2,9 +2,20 @@ import os
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# Use a stable path for the SQLite database (not relative to CWD or OneDrive)
-DB_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data")
-os.makedirs(DB_DIR, exist_ok=True)
+# Use a stable path for the SQLite database, with tempdir fallback for serverless (e.g. Vercel)
+import tempfile
+
+if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+    DB_DIR = os.path.join(tempfile.gettempdir(), "patchwork_data")
+else:
+    DB_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data")
+
+try:
+    os.makedirs(DB_DIR, exist_ok=True)
+except OSError:
+    DB_DIR = os.path.join(tempfile.gettempdir(), "patchwork_data")
+    os.makedirs(DB_DIR, exist_ok=True)
+
 DB_PATH = os.path.join(DB_DIR, "patchwork.db")
 
 SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"
