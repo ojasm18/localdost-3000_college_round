@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg: #0A0E14;
+    --surface-1: #10151D;
+    --surface-2: #161C26;
+    --surface-3: #1D2531;
+    --border: #232C3A;
+    --border-strong: #2F3B4D;
+    --text: #E6EDF5;
+    --text-muted: #9AA7B8;
+    --text-faint: #6B7788;
+    --accent: #2DD4A8;
+    --accent-hover: #4BE3BB;
+    --accent-fg: #04130E;
+    --info: #5AA9FF;
+    --warning: #F5B84B;
+    --danger: #FF6B6B;
+    --violet: #A78BFA;
+    --neutral: #8896A9;
+    --accent-soft: rgba(45, 212, 168, 0.12);
+    --info-soft: rgba(90, 169, 255, 0.12);
+    --warning-soft: rgba(245, 184, 75, 0.12);
+    --danger-soft: rgba(255, 107, 107, 0.12);
+    --violet-soft: rgba(167, 139, 250, 0.12);
+    --focus-ring: #5AA9FF;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Custom scrollbar for dark developer UI */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #232C3A;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #2F3B4D;
+  }
+}
