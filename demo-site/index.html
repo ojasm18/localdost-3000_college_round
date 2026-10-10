@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/assets/logo.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="MediCare+ Regional Patient Portal — Warm Editorial Enterprise Healthcare" />
+    <title>MediCare+ | Healthcare Portal</title>
+    
+    <!-- Warm Editorial Typography: Libre Caslon Text + Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- PATCHWORK Runtime: Connects to PATCHWORK Cloud & Local Engine -->
+    <script defer 
+            src="/runtime/patchwork.js" 
+            data-site="medicare_plus_prod" 
+            data-api="http://localhost:8000" 
+            data-integration="pk_live_medicare_portal_enterprise">
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
