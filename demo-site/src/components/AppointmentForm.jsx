@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { submitAppointmentApi } from '../services/api';
 import { validateAppointmentForm } from '../utils/validation';
-import { IconCheck, IconAlert } from './Icons';
+import { IconCheck } from './Icons';
 
 export default function AppointmentForm({ 
   visualPatchActive = false, 
@@ -24,13 +24,13 @@ export default function AppointmentForm({
 
   const timeSlots = ['09:00 AM', '10:30 AM', '01:15 PM', '02:45 PM', '04:00 PM'];
 
-  // Handle click on the blocking veil (Bug #1 click intercept)
+  // Handle click on the blocking veil
   const handleVeilClick = (e) => {
     e.stopPropagation();
     setClickAttemptCount((prev) => prev + 1);
     setClickWarning(true);
     setTimeout(() => setClickWarning(false), 2500);
-    console.warn('[BUG #1 DETECTED] Click intercepted by loading-veil! Target z-index: 1 < Veil z-index: 100.');
+    console.warn('Click intercepted by loading-veil overlay.');
   };
 
   const handleSubmit = async (e) => {
@@ -56,30 +56,11 @@ export default function AppointmentForm({
     <div id="appointments" className="appointment-page animate-fade-in">
       <div className="section-head-card">
         <div className="section-title-wrap">
-          <span className="badge-scenario">Scenario: Bug #1 (CSS Stacking Context)</span>
           <h2>Schedule Care Appointment</h2>
           <p>
             Connect with board-certified physicians across Valley Regional Medical Center.
             Includes digital clinical check-in and automated SMS reminders.
           </p>
-        </div>
-
-        {/* Bug Status Callout */}
-        <div className={`bug-status-box ${visualPatchActive ? 'status-patched' : 'status-broken'}`}>
-          <div className="bug-status-header">
-            <span className="status-dot"></span>
-            <strong>{visualPatchActive ? 'Patch Active: Stacking Context Resolved' : 'Production Failure: Click Intercept Veil'}</strong>
-          </div>
-          <p className="bug-status-desc">
-            {visualPatchActive 
-              ? 'PATCHWORK injected "z-index: 9999 !important; pointer-events: auto". Button layer elevated.'
-              : 'The "Request Appointment" button is trapped beneath a transparent modal veil (z-index: 100). Clicks are intercepted.'}
-          </p>
-          {!visualPatchActive && onTriggerVisualPatch && (
-            <button className="btn-patch-quick" onClick={onTriggerVisualPatch}>
-              Apply Visual Hotfix
-            </button>
-          )}
         </div>
       </div>
 
@@ -192,15 +173,7 @@ export default function AppointmentForm({
                 ></textarea>
               </div>
 
-              {/* Bug #1 Action Area: Button Container with Stacking Context Issue */}
               <div className="appointment-button-container relative">
-                {clickWarning && (
-                  <div className="click-intercept-alert animate-bounce">
-                    <IconAlert size={14} /> <strong>Click Intercepted!</strong> Transparent veil overlay is absorbing pointer events (Bug #1).
-                  </div>
-                )}
-
-                {/* THE BUTTON */}
                 <button
                   type="submit"
                   id="appointment-submit-button"
@@ -216,13 +189,11 @@ export default function AppointmentForm({
                   {loading ? 'Submitting Consultation Request...' : 'Confirm Appointment Request'}
                 </button>
 
-                {/* THE BUGGY MODAL VEIL: Has z-index 100 unless patched */}
                 {!visualPatchActive && (
                   <div
                     className="loading-veil"
                     data-patch-target="appointment-loading-veil"
                     onClick={handleVeilClick}
-                    title="Invisible semi-transparent veil overlaying the button"
                     style={{
                       position: 'absolute',
                       top: 0,
@@ -234,11 +205,7 @@ export default function AppointmentForm({
                       cursor: 'pointer',
                       pointerEvents: 'auto'
                     }}
-                  >
-                    <div className="veil-debug-tag">
-                      Bug #1 Overlay: z-index 100 • Intercepted Clicks: {clickAttemptCount}
-                    </div>
-                  </div>
+                  />
                 )}
               </div>
             </form>
@@ -256,14 +223,7 @@ export default function AppointmentForm({
               </ul>
             </div>
 
-            <div className="panel-card-accent">
-              <div className="accent-tag">Change Control Audit</div>
-              <p>
-                In standard healthcare pipelines, deploying this CSS stacking fix takes <strong>5–7 business days</strong> through 
-                the change control board. PATCHWORK injects the isolated patch in <strong>30 seconds</strong> with 
-                cryptographic revision logging.
-              </p>
-            </div>
+
           </div>
         </div>
       )}

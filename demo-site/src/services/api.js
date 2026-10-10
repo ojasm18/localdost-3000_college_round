@@ -87,8 +87,7 @@ export async function submitAppointmentApi(appointmentData) {
 }
 
 /**
- * Bug #3 Target: Attempts to contact third party payment gateway
- * Without PATCHWORK network interception, this simulates 500 error / outage.
+ * Processes payment through the third-party payment gateway.
  */
 export async function processPaymentApi(paymentPayload) {
   const targetUrl = 'https://payment-gateway.local/process';

@@ -24,7 +24,6 @@ export function initAuth() {
 
 /**
  * Validates the current patient session.
- * Bug #2: Returns 401 Unauthorized after 60s due to misconfigured token refresh
  */
 export async function validateSession() {
   const loginTime = parseInt(localStorage.getItem('loginTime') || Date.now().toString(), 10);

@@ -5,7 +5,6 @@ import AppointmentForm from './components/AppointmentForm';
 import LabResults from './components/LabResults';
 import Billing from './components/Billing';
 import Messages from './components/Messages';
-import PatchworkHUD from './components/PatchworkHUD';
 import { initAuth, resetSession, getSessionRemainingTime } from './services/auth';
 import { fetchLabResultsApi } from './services/api';
 import './App.css';
@@ -14,7 +13,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [activePhase, setActivePhase] = useState(1); // 1 to 6 per DEMO_README
 
-  // Bug & Patch States
+  // Patch States
   const [visualPatch, setVisualPatch] = useState(false);
   const [logicPatch, setLogicPatch] = useState(false);
   const [networkPatch, setNetworkPatch] = useState(false);
@@ -50,7 +49,7 @@ export default function App() {
     return () => clearInterval(t);
   }, []);
 
-  // Effect: Manage Visual Patch (Bug #1 CSS Override)
+  // Effect: Manage Visual Patch (CSS Override)
   useEffect(() => {
     const existingStyle = document.getElementById('patchwork-visual-override');
     if (visualPatch) {
@@ -80,7 +79,7 @@ export default function App() {
     }
   }, [visualPatch]);
 
-  // Effect: Manage Logic Patch (Bug #2 Behavior Override)
+  // Effect: Manage Logic Patch (Behavior Override)
   useEffect(() => {
     if (logicPatch) {
       window.patchLabResults = async function(patientId) {
@@ -94,7 +93,7 @@ export default function App() {
     }
   }, [logicPatch]);
 
-  // Effect: Manage Network Patch (Bug #3 Interception Fallback)
+  // Effect: Manage Network Patch (Interception Fallback)
   useEffect(() => {
     const originalFetch = window.__originalFetch || window.fetch.bind(window);
     if (!window.__originalFetch) {
@@ -208,26 +207,11 @@ export default function App() {
             <span>HIPAA HITECH Certified</span>
           </div>
           <div className="footer-right">
-            <span className="badge-demo-synthetic">Synthetic Healthcare Demo • MediCare+</span>
           </div>
         </div>
       </footer>
 
-      {/* Floating PATCHWORK Live Presenter HUD */}
-      <PatchworkHUD
-        activePhase={activePhase}
-        setActivePhase={setActivePhase}
-        visualPatch={visualPatch}
-        setVisualPatch={setVisualPatch}
-        logicPatch={logicPatch}
-        setLogicPatch={setLogicPatch}
-        networkPatch={networkPatch}
-        setNetworkPatch={setNetworkPatch}
-        smartHealingDrift={smartHealingDrift}
-        setSmartHealingDrift={setSmartHealingDrift}
-        backendConnected={backendConnected}
-        onRollbackAll={handleRollbackAll}
-      />
+
     </div>
   );
 }

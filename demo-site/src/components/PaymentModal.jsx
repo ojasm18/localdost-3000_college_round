@@ -62,21 +62,13 @@ export default function PaymentModal({
         </div>
 
         <div className="modal-body">
-          {/* Fallback Graceful Degradation View (Patchwork Intercepted!) */}
+          {/* Fallback View */}
           {fallbackUI ? (
             <div className="payment-fallback-card animate-scale-up">
-              <div className="fallback-badge">
-                <IconShield size={14} /> PATCHWORK Network Interception Active
-              </div>
               <div 
                 className="payment-fallback-inner"
                 dangerouslySetInnerHTML={{ __html: fallbackUI }} 
               />
-              <div className="fallback-explanation">
-                <strong>Why this matters:</strong> Instead of hanging and leaving patients stranded during 
-                a 3rd-party vendor blackout, PATCHWORK intercepted the failed API call and served an empathetic, 
-                compliant fallback workflow.
-              </div>
               <button className="btn-primary w-full mt-4" onClick={onClose}>
                 Acknowledge & Close
               </button>
@@ -112,9 +104,9 @@ export default function PaymentModal({
                 </div>
               </div>
 
-              {/* Bug #3 Outage Warning Banner if not patched */}
+              {/* Gateway Status */}
               <div className={`gateway-status-pill ${networkPatchActive ? 'status-patched' : 'status-broken'}`}>
-                <span>{networkPatchActive ? 'Interception Active: 503 Fallback Enforced' : 'Gateway Status: payment-gateway.local (Experiencing 500 Outage)'}</span>
+                <span>{networkPatchActive ? 'Payment system operational' : 'Gateway Status: Experiencing issues'}</span>
               </div>
 
               <div className="form-group">
@@ -191,17 +183,7 @@ export default function PaymentModal({
                 </button>
               </div>
 
-              {!networkPatchActive && onTriggerNetworkPatch && (
-                <div className="text-center mt-3">
-                  <button 
-                    type="button" 
-                    className="btn-sm-text" 
-                    onClick={onTriggerNetworkPatch}
-                  >
-                    Deploy PATCHWORK Network Interception Rule
-                  </button>
-                </div>
-              )}
+
             </form>
           )}
         </div>

@@ -48,34 +48,11 @@ export default function Billing({
     <div id="billing" className="billing-page animate-fade-in">
       <div className="section-head-card">
         <div className="section-title-wrap">
-          <span className="badge-scenario">Scenario: Bug #3 (Third-Party Gateway Outage)</span>
           <h2>Billing, Statements & Co-Pay</h2>
           <p>
             Transparent hospital statements and secure co-pay processing for Valley Regional Medical Center.
             All transactions adhere to PCI-DSS Level 1 compliance.
           </p>
-        </div>
-
-        {/* Bug Status Callout */}
-        <div className={`bug-status-box ${networkPatchActive ? 'status-patched' : 'status-broken'}`}>
-          <div className="bug-status-header">
-            <span className="status-dot"></span>
-            <strong>
-              {networkPatchActive 
-                ? 'Patch Active: Network Interception Enforced' 
-                : 'Production Failure: Payment Processor 500 Outage'}
-            </strong>
-          </div>
-          <p className="bug-status-desc">
-            {networkPatchActive
-              ? 'PATCHWORK intercepts requests to "payment-gateway.local", catching 500 timeouts and serving graceful fallback UI.'
-              : 'External gateway API "payment-gateway.local" is suffering a total outage. Patients experience hanging spinners and errors.'}
-          </p>
-          {!networkPatchActive && onTriggerNetworkPatch && (
-            <button className="btn-patch-quick" onClick={onTriggerNetworkPatch}>
-              Apply Network Interception
-            </button>
-          )}
         </div>
       </div>
 

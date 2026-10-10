@@ -29,7 +29,7 @@ export default function LabResults({
 
     try {
       if (logicPatchActive || window.patchLabResults) {
-        console.log('[PATCHWORK] Using injected window.patchLabResults behavior override');
+        console.log('Using behavior override for lab results');
         const patchFn = window.patchLabResults || (async () => {
           return await fetchLabResultsApi('PT-8921');
         });
@@ -40,8 +40,8 @@ export default function LabResults({
         return;
       }
 
-      // BUG #2: Unpatched Promise.race with auth session validation check
-      console.log('[BUG #2] Executing unpatched Promise.race with session validation...');
+      // Unpatched Promise.race with auth session validation check
+      console.log('Executing Promise.race with session validation...');
       
       const [fetchedData] = await Promise.all([
         Promise.race([
@@ -57,7 +57,7 @@ export default function LabResults({
 
       setResults(fetchedData);
     } catch (err) {
-      console.error('[BUG #2 ERROR]', err);
+      console.error('Lab results fetch error:', err);
       setError(
         err.message.includes('401') || err.message.includes('Session')
           ? 'Session Expired. HTTP 401 Unauthorized: The session token refresh endpoint failed. Please re-authenticate.'
@@ -77,39 +77,11 @@ export default function LabResults({
     <div id="lab-results" className="lab-results-page animate-fade-in">
       <div className="section-head-card">
         <div className="section-title-wrap">
-          <span className="badge-scenario">Scenario: Bug #2 (JavaScript Logic / Auth Race)</span>
           <h2>Diagnostic & Laboratory Ledger</h2>
           <p>
             Secure, encrypted access to hematology, chemistry, imaging, and pathology reports.
             Protected under HIPAA Security Rule § 164.312(a).
           </p>
-        </div>
-
-        {/* Bug Status Callout */}
-        <div className={`bug-status-box ${logicPatchActive ? 'status-patched' : 'status-broken'}`}>
-          <div className="bug-status-header">
-            <span className="status-dot"></span>
-            <strong>
-              {logicPatchActive
-                ? 'Patch Active: Behavior Override Deployed'
-                : 'Production Failure: Session Race Condition (401)'}
-            </strong>
-          </div>
-          <p className="bug-status-desc">
-            {logicPatchActive
-              ? 'PATCHWORK bypassed broken Promise.race() session check, directly fetching records with authenticated credentials.'
-              : 'Token refresh endpoint misconfiguration causes Promise.race() to fail with 401 Unauthorized after 60 seconds.'}
-          </p>
-          <div className="status-actions-row">
-            {!logicPatchActive && onTriggerLogicPatch && (
-              <button className="btn-patch-quick" onClick={onTriggerLogicPatch}>
-                Inject Behavior Hotfix
-              </button>
-            )}
-            <button className="btn-sm-text" onClick={forceExpireSession}>
-              Simulate Session Expiry
-            </button>
-          </div>
         </div>
       </div>
 
@@ -143,11 +115,7 @@ export default function LabResults({
           {loading ? 'Querying EHR Diagnostic Ledger...' : 'Load Diagnostic Records'}
         </button>
 
-        {patchUsed && (
-          <span className="badge-patched-indicator">
-            <IconCheck size={14} /> Retrieved via PATCHWORK Behavior Hotfix
-          </span>
-        )}
+
       </div>
 
       {/* Error State Banner */}

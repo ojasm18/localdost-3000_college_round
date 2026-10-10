@@ -12,10 +12,10 @@ import {
 export default function Header({ activeTab, setActiveTab, onResetSession, remainingSeconds }) {
   const tabs = [
     { id: 'Dashboard', label: 'Overview', icon: <IconActivity size={15} /> },
-    { id: 'Appointments', label: 'Appointments', icon: <IconCalendar size={15} />, badge: 'Bug #1' },
-    { id: 'Lab Results', label: 'Diagnostics', icon: <IconFlask size={15} />, badge: 'Bug #2' },
+    { id: 'Appointments', label: 'Appointments', icon: <IconCalendar size={15} /> },
+    { id: 'Lab Results', label: 'Diagnostics', icon: <IconFlask size={15} /> },
     { id: 'Messages', label: 'Care Team', icon: <IconChat size={15} />, count: '2' },
-    { id: 'Billing', label: 'Billing & Co-Pay', icon: <IconCard size={15} />, badge: 'Bug #3' },
+    { id: 'Billing', label: 'Billing & Co-Pay', icon: <IconCard size={15} /> },
   ];
 
   return (
