@@ -970,6 +970,25 @@ apiRouter.get('/runtime/bundle/:siteKey', (req, res) => {
   res.json({ patches: JSON.parse(release.bundle || '[]') });
 });
 
+// Runtime compatibility aliases
+apiRouter.get('/sites/:siteId/active-patches', (_req, res) => {
+  const db = getDb();
+  const site = db.prepare('SELECT * FROM site LIMIT 1').get() as any;
+  if (!site || !site.liveReleaseId) return res.json({ patches: [] });
+
+  const release = db.prepare('SELECT * FROM releases WHERE id = ?').get(site.liveReleaseId) as any;
+  if (!release) return res.json({ patches: [] });
+
+  res.json({ patches: JSON.parse(release.bundle || '[]') });
+});
+
+apiRouter.get('/sites/:siteId', (req, res) => {
+  const db = getDb();
+  const site = rowToObj(db.prepare('SELECT * FROM site LIMIT 1').get());
+  res.json(site || { id: req.params.siteId, name: 'Demo Site', autoRollback: true });
+});
+
+
 apiRouter.get('/runtime/preview/:token', (req, res) => {
   const db = getDb();
   const preview = db.prepare('SELECT * FROM previews WHERE token = ?').get(req.params.token) as any;

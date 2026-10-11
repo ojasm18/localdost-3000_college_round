@@ -1,3 +1,4 @@
+// @ts-ignore
 import initSqlJs, { Database as SqlJsDatabase } from 'sql.js';
 import fs from 'fs';
 import path from 'path';
