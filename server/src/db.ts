@@ -354,14 +354,19 @@ function initSchema(db: SqlJsDatabase) {
       `);
     }
 
-    const userRows = db.exec('SELECT COUNT(*) as c FROM users');
-    const userCount = (userRows[0]?.values[0]?.[0] as number) || 0;
-    if (userCount === 0) {
-      db.run(`
-        INSERT INTO users (id, name, role) VALUES ('asha', 'Asha', 'DEVELOPER');
-        INSERT INTO users (id, name, role) VALUES ('ravi', 'Ravi', 'REVIEWER');
-        INSERT INTO users (id, name, role) VALUES ('admin', 'Admin', 'ADMIN');
-      `);
+    const userRows = db.exec('SELECT id FROM users');
+    const existingUserIds = (userRows[0]?.values || []).map((v: any) => v[0]);
+    if (!existingUserIds.includes('asha')) {
+      db.run(`INSERT INTO users (id, name, role) VALUES ('asha', 'Asha', 'DEVELOPER');`);
+    }
+    if (!existingUserIds.includes('kiran')) {
+      db.run(`INSERT INTO users (id, name, role) VALUES ('kiran', 'Kiran', 'DEVELOPER');`);
+    }
+    if (!existingUserIds.includes('ravi')) {
+      db.run(`INSERT INTO users (id, name, role) VALUES ('ravi', 'Ravi', 'REVIEWER');`);
+    }
+    if (!existingUserIds.includes('admin')) {
+      db.run(`INSERT INTO users (id, name, role) VALUES ('admin', 'Admin', 'ADMIN');`);
     }
   } catch {}
 }

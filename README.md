@@ -139,6 +139,7 @@ PATCHWORK includes a built-in role switcher in the top navigation bar. Every API
 | User | ID | Role | Permissions |
 |---|---|---|---|
 | **Asha** | `asha` | `DEVELOPER` | Can scan sites, create/edit patches in Visual Editor, submit patches for review, and dismiss issues. Cannot approve patches or force deploy. |
+| **Kiran**| `kiran` | `DEVELOPER` | Second developer: create/edit patches, simulate DOM fixes, submit for review, collaborate on tickets. |
 | **Ravi** | `ravi` | `REVIEWER` | Can review candidate patches, approve patches (from Draft or In-Review), request changes, and resolve selector collisions. |
 | **Admin**| `admin` | `ADMIN` | Full administrative privileges: approve patches, deploy releases, trigger deploy overrides, configure site settings, and perform Global System Reset. |
 
@@ -359,6 +360,8 @@ All API routes are prefixed with `/api`. Requests accept and return JSON. The ca
 | Method | Endpoint | Description |
 |---|---|---|
 | `GET` | `/api/test-runs` | Lists automated regression test runs. |
+| `POST`| `/api/test-runs` | Triggers a new visual test suite run using Playwright and Pixelmatch (`{ trigger?: 'MANUAL' | 'PRE_DEPLOY', releaseId?, previewId? }`). |
+| `POST`| `/api/test-runs/:id/rerun` | Reruns an existing test run and generates fresh baseline, candidate, and diff screenshots. |
 | `GET` | `/api/test-runs/:id` | Detailed step-by-step report with baseline, current, and pixelmatch diff images. |
 
 ### Audit & Runtime

@@ -70,6 +70,7 @@ export const Activity: React.FC = () => {
           >
             <option value="ALL">All Actors</option>
             <option value="asha">Asha (Developer)</option>
+            <option value="kiran">Kiran (Developer)</option>
             <option value="ravi">Ravi (Reviewer)</option>
             <option value="admin">Admin</option>
             <option value="system">System (Automated)</option>

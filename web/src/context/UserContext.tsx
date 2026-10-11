@@ -10,6 +10,7 @@ interface UserContextType {
 
 const DEFAULT_USERS: User[] = [
   { id: 'asha', name: 'Asha', role: 'DEVELOPER' },
+  { id: 'kiran', name: 'Kiran', role: 'DEVELOPER' },
   { id: 'ravi', name: 'Ravi', role: 'REVIEWER' },
   { id: 'admin', name: 'Admin', role: 'ADMIN' },
 ];

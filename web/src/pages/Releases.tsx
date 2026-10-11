@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Package,
   RotateCcw,
@@ -24,6 +24,7 @@ import { EmptyState } from '../components/EmptyState';
 
 export const Releases: React.FC = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { currentUser } = useCurrentUser();
 
@@ -208,6 +209,23 @@ export const Releases: React.FC = () => {
                 {liveRelease.parentReleaseId ? `Target: ${liveRelease.parentReleaseId}` : 'Initial Genesis'}
               </span>
             </div>
+
+            {liveRelease.testRunId && (
+              <div
+                onClick={() => navigate(`/test-runs/${liveRelease.testRunId}`)}
+                className="p-3 rounded bg-surface-2 hover:bg-surface-3 border border-border cursor-pointer transition-colors sm:col-span-3 flex items-center justify-between"
+              >
+                <div className="flex items-center gap-2">
+                  <PlayCircle className="w-4 h-4 text-violet" />
+                  <span className="text-xs font-semibold text-text">Automated Verification Test Run</span>
+                  <span className="font-mono text-[10px] text-text-faint">({liveRelease.testRunId})</span>
+                </div>
+                <span className="text-xs text-violet font-semibold flex items-center gap-1">
+                  <span>View Visual Diff Report</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </span>
+              </div>
+            )}
           </div>
         </div>
       ) : (
@@ -276,6 +294,17 @@ export const Releases: React.FC = () => {
 
                   {/* Actions for Candidate */}
                   <div className="flex items-center gap-2">
+                    {rel.testRunId && (
+                      <button
+                        onClick={() => navigate(`/test-runs/${rel.testRunId}`)}
+                        className="px-2.5 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 text-text border border-border text-xs flex items-center gap-1 transition-colors"
+                        title="View visual regression diff report"
+                      >
+                        <PlayCircle className="w-3.5 h-3.5 text-violet" />
+                        <span>Visual Report</span>
+                      </button>
+                    )}
+
                     {canDeploy && (
                       <button
                         onClick={() => deployMutation.mutate({ id: rel.id })}

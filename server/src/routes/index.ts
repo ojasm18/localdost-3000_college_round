@@ -9,6 +9,7 @@ import { nanoid } from 'nanoid';
 import { validateOperationSafety, scoreRisk, PatchOperationSchema } from '../../../shared/validation.js';
 import { z } from 'zod';
 import { runScan } from '../scanner.js';
+import { runTestSuite } from '../testrunner.js';
 
 export const apiRouter = Router();
 
@@ -864,6 +865,50 @@ apiRouter.get('/test-runs', (_req, res) => {
   res.json(db.prepare('SELECT * FROM testruns ORDER BY startedAt DESC').all().map(rowToObj));
 });
 
+apiRouter.post('/test-runs', async (req, res) => {
+  const user = getUserFromHeader(req);
+  const { trigger, releaseId, previewId } = req.body || {};
+
+  try {
+    const runResult = await runTestSuite({
+      trigger: trigger || 'MANUAL',
+      releaseId: releaseId || null,
+      previewId: previewId || null,
+      actor: { id: user.id, name: user.name },
+    });
+    res.json(runResult);
+  } catch (err: any) {
+    console.error('Visual test run failed:', err);
+    res.status(500).json({
+      error: { code: 'TEST_RUN_FAILED', message: err.message || 'Automated visual test run failed' },
+    });
+  }
+});
+
+apiRouter.post('/test-runs/:id/rerun', async (req, res) => {
+  const user = getUserFromHeader(req);
+  const db = getDb();
+  const existing = db.prepare('SELECT * FROM testruns WHERE id = ?').get(req.params.id) as any;
+  if (!existing) {
+    return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Test run not found' } });
+  }
+
+  try {
+    const runResult = await runTestSuite({
+      trigger: existing.trigger || 'MANUAL',
+      releaseId: existing.releaseId || null,
+      previewId: existing.previewId || null,
+      actor: { id: user.id, name: user.name },
+    });
+    res.json(runResult);
+  } catch (err: any) {
+    console.error('Test run rerun failed:', err);
+    res.status(500).json({
+      error: { code: 'TEST_RUN_FAILED', message: err.message || 'Rerun failed' },
+    });
+  }
+});
+
 apiRouter.get('/test-runs/:id', (req, res) => {
   const db = getDb();
   const run = rowToObj(db.prepare('SELECT * FROM testruns WHERE id = ?').get(req.params.id));
@@ -934,6 +979,15 @@ apiRouter.post('/releases', (req, res) => {
     actorId: user.id, actorName: user.name,
     action: 'RELEASE_CREATED', targetType: 'release', targetId: id,
     summary: `${user.name} created Release v${nextVersion} with ${patchIds.length} new patches`,
+  });
+
+  // Automatically trigger visual verification test run for the release candidate
+  runTestSuite({
+    trigger: 'PRE_DEPLOY',
+    releaseId: id,
+    actor: { id: user.id, name: user.name },
+  }).catch((err) => {
+    console.error(`Automatic pre-deploy test run failed for release ${id}:`, err);
   });
 
   res.json(rowToObj(db.prepare('SELECT * FROM releases WHERE id = ?').get(id)));

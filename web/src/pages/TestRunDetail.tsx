@@ -1,16 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   CheckCircle2,
   AlertTriangle,
   PlayCircle,
+  Play,
   Check,
   X,
   Layers,
   Image as ImageIcon,
   Activity,
+  RotateCw,
+  ExternalLink,
+  Package,
 } from 'lucide-react';
 import { api } from '../api';
 import { Skeleton } from '../components/Skeleton';
@@ -18,16 +22,32 @@ import { Skeleton } from '../components/Skeleton';
 export const TestRunDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [selectedImage, setSelectedImage] = useState<{ src: string; title: string } | null>(null);
 
   const { data: testRun, isLoading, error } = useQuery({
     queryKey: ['testrun', id],
     queryFn: () => api.get(`/api/test-runs/${id}`),
     enabled: !!id,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === 'RUNNING' || status === 'QUEUED' ? 2000 : false;
+    },
+  });
+
+  const rerunMutation = useMutation({
+    mutationFn: () => api.post(`/api/test-runs/${id}/rerun`),
+    onSuccess: (newRun) => {
+      queryClient.invalidateQueries({ queryKey: ['testruns'] });
+      if (newRun?.id) {
+        navigate(`/test-runs/${newRun.id}`);
+      }
+    },
   });
 
   if (isLoading) {
     return (
-      <div className="max-w-5xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6">
         <Skeleton className="h-6 w-32" />
         <Skeleton className="h-20 w-full" />
         <Skeleton className="h-64 w-full" />
@@ -54,15 +74,24 @@ export const TestRunDetail: React.FC = () => {
   const steps = testRun.steps || [];
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      {/* Back button */}
-      <div>
+    <div className="max-w-6xl mx-auto space-y-6">
+      {/* Back button & Action Header */}
+      <div className="flex items-center justify-between">
         <button
           onClick={() => navigate('/test-runs')}
           className="inline-flex items-center gap-1.5 text-xs text-text-muted hover:text-text transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to Test Runs</span>
+          <span>Back to All Test Runs</span>
+        </button>
+
+        <button
+          onClick={() => rerunMutation.mutate()}
+          disabled={rerunMutation.isPending}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 text-text border border-border text-xs font-semibold shadow-sm transition-colors disabled:opacity-50"
+        >
+          <RotateCw className={`w-3.5 h-3.5 ${rerunMutation.isPending ? 'animate-spin' : ''}`} />
+          <span>Rerun This Suite</span>
         </button>
       </div>
 
@@ -88,15 +117,40 @@ export const TestRunDetail: React.FC = () => {
             <span className="font-mono text-xs text-text-faint px-2.5 py-1 rounded bg-surface-2 border border-border">
               Trigger: {testRun.trigger}
             </span>
+
+            {testRun.releaseId && (
+              <span className="font-mono text-xs text-accent px-2.5 py-1 rounded bg-accent-soft border border-accent/30 flex items-center gap-1">
+                <Package className="w-3 h-3" />
+                Release: {testRun.releaseId}
+              </span>
+            )}
+
+            {testRun.summary?.targetUrl && (
+              <span className="font-mono text-[11px] text-text-faint px-2.5 py-1 rounded bg-surface-2 border border-border truncate max-w-xs" title={testRun.summary.targetUrl}>
+                Target: {testRun.summary.targetUrl}
+              </span>
+            )}
+
+            {testRun.summary?.appliedPatchesCount !== undefined && (
+              <span className="font-mono text-xs text-violet px-2.5 py-1 rounded bg-violet/10 border border-violet/30">
+                {testRun.summary.appliedPatchesCount} Patches Applied
+              </span>
+            )}
           </div>
 
-          <div className="text-xs font-mono text-text-faint">
-            Started: {new Date(testRun.startedAt).toLocaleString()}
+          <div className="text-xs font-mono text-text-faint flex items-center gap-2">
+            <span>Started: {new Date(testRun.startedAt).toLocaleString()}</span>
+            {testRun.finishedAt && (
+              <>
+                <span>•</span>
+                <span>Finished: {new Date(testRun.finishedAt).toLocaleTimeString()}</span>
+              </>
+            )}
           </div>
         </div>
 
         <div>
-          <h1 className="text-lg font-bold text-text">Verification Run Summary</h1>
+          <h1 className="text-lg font-bold text-text">Automated Verification Report</h1>
           <p className="text-xs text-text-muted mt-1 leading-relaxed">
             {testRun.summary?.message ||
               (isPassed
@@ -108,17 +162,20 @@ export const TestRunDetail: React.FC = () => {
 
       {/* Steps Execution Table / Cards */}
       <div className="p-6 rounded-lg bg-surface-1 border border-border space-y-4">
-        <h2 className="text-xs font-semibold text-text uppercase tracking-wider flex items-center gap-1.5">
-          <Activity className="w-3.5 h-3.5 text-accent" />
-          Flow Steps & Visual Diff Results ({steps.length})
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-semibold text-text uppercase tracking-wider flex items-center gap-1.5">
+            <Activity className="w-3.5 h-3.5 text-accent" />
+            Verification Steps & Visual Diff Results ({steps.length})
+          </h2>
+          <span className="text-[11px] font-mono text-text-faint">Diff Gate Limit: ≤ 0.5%</span>
+        </div>
 
         {steps.length === 0 ? (
           <div className="p-6 text-center text-xs text-text-muted">
             All flow assertions and smoke routes passed cleanly with zero visual drift outside target boundaries.
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-5">
             {steps.map((step: any, idx: number) => {
               const stepPassed = step.status === 'PASSED';
               return (
@@ -142,7 +199,7 @@ export const TestRunDetail: React.FC = () => {
                       </span>
                     </div>
 
-                    {step.diffPercent !== undefined && (
+                    {step.diffPercent !== undefined && step.diffPercent !== null && (
                       <span
                         className={`font-mono text-xs font-medium px-2 py-0.5 rounded ${
                           step.diffPercent <= 0.5
@@ -150,7 +207,7 @@ export const TestRunDetail: React.FC = () => {
                             : 'bg-danger-soft text-danger'
                         }`}
                       >
-                        Diff: {step.diffPercent.toFixed(2)}%
+                        Visual Diff: {step.diffPercent > 0 ? step.diffPercent.toFixed(3) : '0.00'}%
                       </span>
                     )}
                   </div>
@@ -161,55 +218,97 @@ export const TestRunDetail: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Screenshots side by side if available */}
+                  {/* Screenshots side by side with click-to-expand */}
                   {(step.baselineShot || step.currentShot || step.diffShot) && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
-                      <div className="p-2.5 rounded bg-surface-1 border border-border text-center">
-                        <span className="text-[10px] font-mono text-text-faint block mb-1">
-                          BASELINE (Pre-patch)
-                        </span>
+                      {/* Baseline */}
+                      <div className="p-3 rounded bg-surface-1 border border-border space-y-2">
+                        <div className="flex items-center justify-between text-[11px] font-mono text-text-faint">
+                          <span>BASELINE (PRE-PATCH)</span>
+                          {step.baselineShot && (
+                            <button
+                              onClick={() => setSelectedImage({ src: step.baselineShot, title: 'Baseline Screenshot (Pre-patch)' })}
+                              className="hover:text-accent flex items-center gap-1 text-[10px]"
+                            >
+                              <ExternalLink className="w-3 h-3" /> Expand
+                            </button>
+                          )}
+                        </div>
                         {step.baselineShot ? (
-                          <img
-                            src={step.baselineShot}
-                            alt="Baseline"
-                            className="w-full h-32 object-cover rounded border border-border"
-                          />
+                          <div
+                            onClick={() => setSelectedImage({ src: step.baselineShot, title: 'Baseline Screenshot (Pre-patch)' })}
+                            className="h-44 rounded bg-black/40 border border-border overflow-hidden cursor-pointer hover:border-border-strong transition-colors flex items-center justify-center"
+                          >
+                            <img
+                              src={step.baselineShot}
+                              alt="Baseline"
+                              className="w-full h-full object-contain"
+                            />
+                          </div>
                         ) : (
-                          <div className="h-32 rounded bg-bg flex items-center justify-center text-xs text-text-faint font-mono">
+                          <div className="h-44 rounded bg-bg flex items-center justify-center text-xs text-text-faint font-mono">
                             No Baseline
                           </div>
                         )}
                       </div>
 
-                      <div className="p-2.5 rounded bg-surface-1 border border-border text-center">
-                        <span className="text-[10px] font-mono text-text-faint block mb-1">
-                          CANDIDATE (With Patches)
-                        </span>
+                      {/* Candidate */}
+                      <div className="p-3 rounded bg-surface-1 border border-border space-y-2">
+                        <div className="flex items-center justify-between text-[11px] font-mono text-text-faint">
+                          <span>CANDIDATE (WITH PATCHES)</span>
+                          {step.currentShot && (
+                            <button
+                              onClick={() => setSelectedImage({ src: step.currentShot, title: 'Candidate Screenshot (With Patches)' })}
+                              className="hover:text-accent flex items-center gap-1 text-[10px]"
+                            >
+                              <ExternalLink className="w-3 h-3" /> Expand
+                            </button>
+                          )}
+                        </div>
                         {step.currentShot ? (
-                          <img
-                            src={step.currentShot}
-                            alt="Current"
-                            className="w-full h-32 object-cover rounded border border-border"
-                          />
+                          <div
+                            onClick={() => setSelectedImage({ src: step.currentShot, title: 'Candidate Screenshot (With Patches)' })}
+                            className="h-44 rounded bg-black/40 border border-border overflow-hidden cursor-pointer hover:border-border-strong transition-colors flex items-center justify-center"
+                          >
+                            <img
+                              src={step.currentShot}
+                              alt="Candidate"
+                              className="w-full h-full object-contain"
+                            />
+                          </div>
                         ) : (
-                          <div className="h-32 rounded bg-bg flex items-center justify-center text-xs text-text-faint font-mono">
+                          <div className="h-44 rounded bg-bg flex items-center justify-center text-xs text-text-faint font-mono">
                             No Candidate
                           </div>
                         )}
                       </div>
 
-                      <div className="p-2.5 rounded bg-surface-1 border border-border text-center">
-                        <span className="text-[10px] font-mono text-text-faint block mb-1">
-                          PIXELMATCH DIFF
-                        </span>
+                      {/* Pixelmatch Diff */}
+                      <div className="p-3 rounded bg-surface-1 border border-border space-y-2">
+                        <div className="flex items-center justify-between text-[11px] font-mono text-text-faint">
+                          <span>PIXELMATCH VISUAL DIFF</span>
+                          {step.diffShot && (
+                            <button
+                              onClick={() => setSelectedImage({ src: step.diffShot, title: 'Pixelmatch Differential Map' })}
+                              className="hover:text-accent flex items-center gap-1 text-[10px]"
+                            >
+                              <ExternalLink className="w-3 h-3" /> Expand
+                            </button>
+                          )}
+                        </div>
                         {step.diffShot ? (
-                          <img
-                            src={step.diffShot}
-                            alt="Diff"
-                            className="w-full h-32 object-cover rounded border border-border"
-                          />
+                          <div
+                            onClick={() => setSelectedImage({ src: step.diffShot, title: 'Pixelmatch Differential Map' })}
+                            className="h-44 rounded bg-black/40 border border-border overflow-hidden cursor-pointer hover:border-border-strong transition-colors flex items-center justify-center"
+                          >
+                            <img
+                              src={step.diffShot}
+                              alt="Visual Diff"
+                              className="w-full h-full object-contain"
+                            />
+                          </div>
                         ) : (
-                          <div className="h-32 rounded bg-bg flex items-center justify-center text-xs text-accent font-mono">
+                          <div className="h-44 rounded bg-bg flex items-center justify-center text-xs text-accent font-mono">
                             Zero Visual Diff
                           </div>
                         )}
@@ -222,6 +321,36 @@ export const TestRunDetail: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Modal image lightbox */}
+      {selectedImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div
+            className="w-full max-w-5xl bg-surface-1 border border-border-strong rounded-lg shadow-2xl p-4 space-y-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-border">
+              <span className="text-xs font-semibold text-text">{selectedImage.title}</span>
+              <button
+                onClick={() => setSelectedImage(null)}
+                className="text-text-muted hover:text-text p-1 text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="max-h-[80vh] overflow-auto flex items-center justify-center bg-black/40 rounded p-2">
+              <img
+                src={selectedImage.src}
+                alt={selectedImage.title}
+                className="max-h-[75vh] w-auto object-contain rounded border border-border"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

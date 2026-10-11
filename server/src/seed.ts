@@ -12,6 +12,7 @@ function seed() {
 
   // Users
   db.prepare('INSERT INTO users (id, name, role) VALUES (?, ?, ?)').run('asha', 'Asha', 'DEVELOPER');
+  db.prepare('INSERT INTO users (id, name, role) VALUES (?, ?, ?)').run('kiran', 'Kiran', 'DEVELOPER');
   db.prepare('INSERT INTO users (id, name, role) VALUES (?, ?, ?)').run('ravi', 'Ravi', 'REVIEWER');
   db.prepare('INSERT INTO users (id, name, role) VALUES (?, ?, ?)').run('admin', 'Admin', 'ADMIN');
 
