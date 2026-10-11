@@ -41,6 +41,9 @@ export const PatchDetail: React.FC = () => {
   const [copiedPreview, setCopiedPreview] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+
   // Fetch patch details
   const { data: patch, isLoading, error } = useQuery({
     queryKey: ['patch', id],
@@ -68,9 +71,15 @@ export const PatchDetail: React.FC = () => {
   const submitForReview = useMutation({
     mutationFn: () => api.post(`/api/patches/${id}/submit`),
     onSuccess: () => {
+      setActionError(null);
+      setActionSuccess('Patch submitted for peer review.');
       queryClient.invalidateQueries({ queryKey: ['patch', id] });
       queryClient.invalidateQueries({ queryKey: ['patches'] });
       queryClient.invalidateQueries({ queryKey: ['overview'] });
+    },
+    onError: (err: any) => {
+      setActionSuccess(null);
+      setActionError(err.message || 'Failed to submit patch for review');
     },
   });
 
@@ -78,9 +87,15 @@ export const PatchDetail: React.FC = () => {
     mutationFn: () => api.post(`/api/patches/${id}/approve`, { comment: reviewNote }),
     onSuccess: () => {
       setReviewNote('');
+      setActionError(null);
+      setActionSuccess('Patch approved successfully!');
       queryClient.invalidateQueries({ queryKey: ['patch', id] });
       queryClient.invalidateQueries({ queryKey: ['patches'] });
       queryClient.invalidateQueries({ queryKey: ['overview'] });
+    },
+    onError: (err: any) => {
+      setActionSuccess(null);
+      setActionError(err.message || 'Failed to approve patch');
     },
   });
 
@@ -89,18 +104,30 @@ export const PatchDetail: React.FC = () => {
       api.post(`/api/patches/${id}/request-changes`, { comment: reviewNote || 'Changes requested' }),
     onSuccess: () => {
       setReviewNote('');
+      setActionError(null);
+      setActionSuccess('Changes requested on patch.');
       queryClient.invalidateQueries({ queryKey: ['patch', id] });
       queryClient.invalidateQueries({ queryKey: ['patches'] });
       queryClient.invalidateQueries({ queryKey: ['overview'] });
+    },
+    onError: (err: any) => {
+      setActionSuccess(null);
+      setActionError(err.message || 'Failed to request changes');
     },
   });
 
   const rejectPatch = useMutation({
     mutationFn: () => api.post(`/api/patches/${id}/reject`, { reason: 'Rejected by author/admin' }),
     onSuccess: () => {
+      setActionError(null);
+      setActionSuccess('Patch rejected and closed.');
       queryClient.invalidateQueries({ queryKey: ['patch', id] });
       queryClient.invalidateQueries({ queryKey: ['patches'] });
       queryClient.invalidateQueries({ queryKey: ['overview'] });
+    },
+    onError: (err: any) => {
+      setActionSuccess(null);
+      setActionError(err.message || 'Failed to reject patch');
     },
   });
 
@@ -375,25 +402,56 @@ export const PatchDetail: React.FC = () => {
 
       {/* Review Actions by Role & State */}
       <div className="p-6 rounded-lg bg-surface-1 border border-border space-y-4">
-        <h2 className="text-xs font-semibold text-text uppercase tracking-wider">
-          Peer Review & Collaboration Actions
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-semibold text-text uppercase tracking-wider">
+            Peer Review & Collaboration Actions
+          </h2>
+          <span className="text-[11px] text-text-muted">
+            Role: <strong className="text-accent">{currentUser.role}</strong> ({currentUser.name})
+          </span>
+        </div>
+
+        {/* Action Error Banner */}
+        {actionError && (
+          <div className="p-3 rounded-md bg-danger-soft border border-danger/40 flex items-center justify-between text-xs text-danger">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>{actionError}</span>
+            </div>
+            <button onClick={() => setActionError(null)} className="text-text-muted hover:text-text text-xs ml-2">
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {/* Action Success Banner */}
+        {actionSuccess && (
+          <div className="p-3 rounded-md bg-accent/10 border border-accent/30 flex items-center justify-between text-xs text-accent">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>{actionSuccess}</span>
+            </div>
+            <button onClick={() => setActionSuccess(null)} className="text-text-muted hover:text-text text-xs ml-2">
+              Dismiss
+            </button>
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-3">
-          {/* If DRAFT: Author/Developer can Submit for Review */}
-          {patch.status === 'DRAFT' && isAuthorOrDev && (
+          {/* If DRAFT: Can Submit for Review */}
+          {patch.status === 'DRAFT' && (
             <button
               onClick={() => submitForReview.mutate()}
               disabled={submitForReview.isPending}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-accent text-accent-fg hover:bg-accent-hover text-xs font-semibold transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-surface-2 hover:bg-surface-3 text-text border border-border text-xs font-semibold transition-colors"
             >
               <Send className="w-3.5 h-3.5" />
               <span>Submit for Peer Review</span>
             </button>
           )}
 
-          {/* If IN_REVIEW: Reviewer can Approve or Request Changes */}
-          {patch.status === 'IN_REVIEW' && isReviewerOrAdmin && (
+          {/* Reviewer or Admin can Approve when in DRAFT or IN_REVIEW */}
+          {(patch.status === 'DRAFT' || patch.status === 'IN_REVIEW') && isReviewerOrAdmin && (
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <input
                 type="text"
@@ -405,19 +463,29 @@ export const PatchDetail: React.FC = () => {
               <button
                 onClick={() => approvePatch.mutate()}
                 disabled={approvePatch.isPending}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-accent text-accent-fg hover:bg-accent-hover text-xs font-semibold transition-colors"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-accent text-accent-fg hover:bg-accent-hover text-xs font-semibold transition-colors shadow-sm"
               >
                 <Check className="w-3.5 h-3.5" />
-                <span>Approve</span>
+                <span>{patch.status === 'DRAFT' ? 'Approve Directly' : 'Approve'}</span>
               </button>
-              <button
-                onClick={() => requestChanges.mutate()}
-                disabled={requestChanges.isPending}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-warning-soft text-warning hover:bg-warning/20 border border-warning/30 text-xs font-medium transition-colors"
-              >
-                <AlertTriangle className="w-3.5 h-3.5" />
-                <span>Request Changes</span>
-              </button>
+              {patch.status === 'IN_REVIEW' && (
+                <button
+                  onClick={() => requestChanges.mutate()}
+                  disabled={requestChanges.isPending}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-warning-soft text-warning hover:bg-warning/20 border border-warning/30 text-xs font-medium transition-colors"
+                >
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>Request Changes</span>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Inform developer when patch is waiting in review */}
+          {patch.status === 'IN_REVIEW' && !isReviewerOrAdmin && (
+            <div className="text-xs text-text-muted flex items-center gap-2 py-1 bg-surface-2/60 px-3 py-2 rounded-md border border-border">
+              <Clock className="w-4 h-4 text-accent" />
+              <span>Awaiting approval by a Reviewer (Ravi) or Admin. Switch role in top bar to approve.</span>
             </div>
           )}
 

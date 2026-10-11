@@ -28,12 +28,33 @@ export const TestRuns: React.FC = () => {
       {/* Header bar */}
       <div className="flex items-center justify-between pb-2 border-b border-border">
         <div>
-          <h1 className="text-xl font-bold text-text flex items-center gap-2">
+          <h1 className="text-xl font-bold text-text flex items-center gap-2.5">
             <PlayCircle className="w-5 h-5 text-violet" />
-            Automated Visual Test Runs
+            <span>Automated Visual Test Runs</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider bg-info-soft text-info border border-info/30">
+              Coming Soon
+            </span>
           </h1>
           <p className="text-xs text-text-muted mt-0.5">
             Automated regression validation: Playwright browser flows, pixelmatch visual diff gates, and runtime assertion checks.
+          </p>
+        </div>
+      </div>
+
+      {/* Coming Soon Notice Card */}
+      <div className="p-4 rounded-lg bg-surface-1 border border-border flex items-start gap-3">
+        <div className="p-2 rounded bg-info-soft text-info border border-info/30 mt-0.5">
+          <Clock className="w-4 h-4" />
+        </div>
+        <div className="space-y-0.5">
+          <div className="text-xs font-semibold text-text flex items-center gap-2">
+            <span>Visual Regression Suite</span>
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-info-soft text-info border border-info/30">
+              Coming Soon
+            </span>
+          </div>
+          <p className="text-xs text-text-muted leading-relaxed">
+            Automated regression validation with Playwright browser flows and pixelmatch diff gates will execute here as release candidates and previews are verified.
           </p>
         </div>
       </div>

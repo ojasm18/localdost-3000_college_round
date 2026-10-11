@@ -365,3 +365,63 @@ function initSchema(db: SqlJsDatabase) {
     }
   } catch {}
 }
+
+export function clearArtifacts() {
+  try {
+    if (process.env.ARTIFACTS_DIR) {
+      const artifactsDir = path.resolve(process.env.ARTIFACTS_DIR);
+      if (fs.existsSync(artifactsDir)) {
+        const files = fs.readdirSync(artifactsDir);
+        for (const file of files) {
+          if (file.endsWith('.png') || file.endsWith('.jpg')) {
+            try {
+              fs.unlinkSync(path.join(artifactsDir, file));
+            } catch {}
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to clear artifacts directory:', err);
+  }
+}
+
+export function resetDatabase() {
+  if (!rawDb) throw new Error('Database not initialized');
+
+  const tables = [
+    'audit',
+    'teststeps',
+    'testruns',
+    'releases',
+    'previews',
+    'conflicts',
+    'reviews',
+    'comments',
+    'patches',
+    'issues',
+    'scans',
+    'flows',
+    'site',
+    'users',
+  ];
+
+  for (const t of tables) {
+    try {
+      rawDb.run(`DROP TABLE IF EXISTS ${t};`);
+    } catch (e) {
+      console.warn(`Failed to drop table ${t}:`, e);
+    }
+  }
+
+  initSchema(rawDb);
+
+  try {
+    rawDb.run(`
+      INSERT INTO flows (id, name, steps)
+      VALUES ('flow-home', 'Homepage Smoke Check', '[{"action":"screenshot","name":"home"}]');
+    `);
+  } catch {}
+
+  saveDb();
+}

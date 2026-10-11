@@ -22,7 +22,9 @@ export async function apiFetch<T = any>(endpoint: string, options: RequestInit =
     let errorMsg = `API Error ${response.status}: ${response.statusText}`;
     try {
       const body = await response.json();
-      if (body.error) errorMsg = body.error;
+      if (body.error) {
+        errorMsg = typeof body.error === 'string' ? body.error : body.error.message || body.error.code || JSON.stringify(body.error);
+      }
     } catch {}
     throw new Error(errorMsg);
   }

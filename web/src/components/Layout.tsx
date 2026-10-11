@@ -129,7 +129,7 @@ export const Layout: React.FC = () => {
                     <span className="truncate">{item.label}</span>
                   </div>
 
-                  {item.badge !== null && (
+                  {Boolean(item.badge) && (
                     <span
                       className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-semibold ${
                         item.badgeType === 'danger'

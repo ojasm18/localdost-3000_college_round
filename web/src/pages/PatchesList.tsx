@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   GitPullRequest,
@@ -14,8 +14,10 @@ import {
   Square,
   ShieldCheck,
   Edit,
+  Check,
 } from 'lucide-react';
 import { api } from '../api';
+import { useCurrentUser } from '../context/UserContext';
 import {
   PatchStatusChip,
   HealthChip,
@@ -27,12 +29,33 @@ import type { PatchStatus } from '../../../shared/types';
 
 export const PatchesList: React.FC = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { currentUser } = useCurrentUser();
+  const isReviewerOrAdmin = currentUser.role === 'REVIEWER' || currentUser.role === 'ADMIN';
+
   const [activeStatus, setActiveStatus] = useState<string>('ALL');
   const [selectedPatchIds, setSelectedPatchIds] = useState<string[]>([]);
 
   const { data: patches, isLoading } = useQuery({
     queryKey: ['patches'],
     queryFn: () => api.get('/api/patches'),
+  });
+
+  const batchApproveMutation = useMutation({
+    mutationFn: () => api.post('/api/patches/batch-approve', { patchIds: selectedPatchIds }),
+    onSuccess: () => {
+      setSelectedPatchIds([]);
+      queryClient.invalidateQueries({ queryKey: ['patches'] });
+      queryClient.invalidateQueries({ queryKey: ['overview'] });
+    },
+  });
+
+  const singleApproveMutation = useMutation({
+    mutationFn: (patchId: string) => api.post(`/api/patches/${patchId}/approve`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['patches'] });
+      queryClient.invalidateQueries({ queryKey: ['overview'] });
+    },
   });
 
   const statuses: { label: string; value: string }[] = [
@@ -86,10 +109,21 @@ export const PatchesList: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {selectedPatchIds.length > 0 && isReviewerOrAdmin && (
+            <button
+              onClick={() => batchApproveMutation.mutate()}
+              disabled={batchApproveMutation.isPending}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md bg-accent text-accent-fg hover:bg-accent-hover text-xs font-semibold shadow-sm transition-colors"
+            >
+              <Check className="w-4 h-4" />
+              <span>Approve Selected ({selectedPatchIds.length})</span>
+            </button>
+          )}
+
           {selectedPatchIds.length > 0 && (
             <button
               onClick={handleCreateRelease}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md bg-accent text-accent-fg hover:bg-accent-hover text-xs font-semibold shadow-sm transition-colors"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md bg-surface-2 hover:bg-surface-3 text-text border border-border text-xs font-semibold shadow-sm transition-colors"
             >
               <Package className="w-4 h-4" />
               <span>Create Release ({selectedPatchIds.length})</span>
@@ -238,10 +272,25 @@ export const PatchesList: React.FC = () => {
 
                       {/* Action */}
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-text-muted group-hover:text-accent transition-colors">
-                          <span>Manage</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </span>
+                        <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                          {isReviewerOrAdmin && (patch.status === 'DRAFT' || patch.status === 'IN_REVIEW') && (
+                            <button
+                              onClick={() => singleApproveMutation.mutate(patch.id)}
+                              disabled={singleApproveMutation.isPending}
+                              className="px-2.5 py-1 rounded bg-accent/15 text-accent hover:bg-accent hover:text-accent-fg font-medium text-[11px] transition-colors"
+                              title="Approve patch"
+                            >
+                              Approve
+                            </button>
+                          )}
+                          <button
+                            onClick={() => navigate(`/patches/${patch.id}`)}
+                            className="inline-flex items-center gap-1 text-[11px] font-medium text-text-muted hover:text-accent transition-colors"
+                          >
+                            <span>Manage</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

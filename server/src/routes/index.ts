@@ -3,7 +3,7 @@ import type { Request, Response } from 'express';
 import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
-import { getDb } from '../db.js';
+import { getDb, resetDatabase, clearArtifacts } from '../db.js';
 import * as audit from '../audit.js';
 import { nanoid } from 'nanoid';
 import { validateOperationSafety, scoreRisk, PatchOperationSchema } from '../../../shared/validation.js';
@@ -123,6 +123,32 @@ apiRouter.post('/site/settings', (req, res) => {
   }
   res.json({ ok: true });
 });
+
+// POST /api/system/reset & POST /api/reset
+const handleSystemReset = (req: Request, res: Response) => {
+  const user = getUserFromHeader(req);
+  try {
+    resetDatabase();
+    clearArtifacts();
+
+    audit.emit({
+      actorId: user.id,
+      actorName: user.name,
+      action: 'SYSTEM_RESET',
+      targetType: 'site',
+      targetId: 'site-main',
+      summary: `${user.name} performed a global system reset (restored database and artifacts to factory defaults)`,
+    });
+
+    res.json({ ok: true, message: 'System reset to clean initial state.' });
+  } catch (err: any) {
+    console.error('System reset error:', err);
+    res.status(500).json({ error: { code: 'RESET_FAILED', message: err.message || 'System reset failed' } });
+  }
+};
+
+apiRouter.post('/system/reset', handleSystemReset);
+apiRouter.post('/reset', handleSystemReset);
 
 // Scans
 apiRouter.get('/scans', (_req, res) => {
@@ -543,24 +569,150 @@ apiRouter.post('/patches/:id/submit', (req, res) => {
   res.json({ ok: true, status: 'IN_REVIEW' });
 });
 
+apiRouter.post('/patches/batch-approve', (req, res) => {
+  const user = getUserFromHeader(req);
+  const db = getDb();
+
+  if (user.role !== 'REVIEWER' && user.role !== 'ADMIN') {
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only REVIEWER or ADMIN can approve patches' } });
+  }
+
+  const { patchIds, comment } = req.body || {};
+  if (!Array.isArray(patchIds) || patchIds.length === 0) {
+    return res.status(422).json({ error: { code: 'VALIDATION', message: 'patchIds array is required' } });
+  }
+
+  const approvedIds: string[] = [];
+  const errors: any[] = [];
+  const now = new Date().toISOString();
+
+  for (const pid of patchIds) {
+    const patch = db.prepare('SELECT * FROM patches WHERE id = ?').get(pid) as any;
+    if (!patch) {
+      errors.push({ id: pid, error: 'Patch not found' });
+      continue;
+    }
+    if (!['DRAFT', 'IN_REVIEW'].includes(patch.status)) {
+      errors.push({ id: pid, error: `Cannot approve from status ${patch.status}` });
+      continue;
+    }
+
+    const openConflicts = db.prepare("SELECT COUNT(*) as c FROM conflicts WHERE (patchAId = ? OR patchBId = ?) AND status = 'OPEN'").get(pid, pid) as any;
+    if (openConflicts && openConflicts.c > 0) {
+      errors.push({ id: pid, error: 'Open conflict detected' });
+      continue;
+    }
+
+    const reviewId = nanoid(10);
+    db.prepare('INSERT INTO reviews (id, patchId, reviewerId, decision, comment, createdAt) VALUES (?, ?, ?, ?, ?, ?)').run(
+      reviewId, pid, user.id, 'APPROVED', comment || 'Batch approved', now,
+    );
+    db.prepare("UPDATE patches SET status = 'APPROVED', updatedAt = ? WHERE id = ?").run(now, pid);
+
+    audit.emit({
+      actorId: user.id, actorName: user.name,
+      action: 'PATCH_APPROVED', targetType: 'patch', targetId: pid,
+      summary: `${user.name} approved "${patch.title}"`,
+    });
+
+    approvedIds.push(pid);
+  }
+
+  res.json({ ok: true, approvedCount: approvedIds.length, approvedIds, errors });
+});
+
+apiRouter.post('/patches/:id/approve', (req, res) => {
+  const user = getUserFromHeader(req);
+  const db = getDb();
+  const patch = db.prepare('SELECT * FROM patches WHERE id = ?').get(req.params.id) as any;
+  if (!patch) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Patch not found' } });
+  if (!['DRAFT', 'IN_REVIEW'].includes(patch.status)) {
+    return res.status(409).json({ error: { code: 'ILLEGAL_TRANSITION', message: `Cannot approve patch in ${patch.status} state` } });
+  }
+
+  if (user.role !== 'REVIEWER' && user.role !== 'ADMIN') {
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only REVIEWER or ADMIN can approve patches' } });
+  }
+
+  const openConflicts = db.prepare("SELECT COUNT(*) as c FROM conflicts WHERE (patchAId = ? OR patchBId = ?) AND status = 'OPEN'").get(req.params.id, req.params.id) as any;
+  if (openConflicts && openConflicts.c > 0) {
+    return res.status(409).json({ error: { code: 'OPEN_CONFLICT', message: 'Resolve open conflicts before approving' } });
+  }
+
+  const { comment } = req.body || {};
+  const reviewId = nanoid(10);
+  const now = new Date().toISOString();
+
+  db.prepare('INSERT INTO reviews (id, patchId, reviewerId, decision, comment, createdAt) VALUES (?, ?, ?, ?, ?, ?)').run(
+    reviewId, req.params.id, user.id, 'APPROVED', comment || '', now,
+  );
+
+  db.prepare("UPDATE patches SET status = 'APPROVED', updatedAt = ? WHERE id = ?").run(now, req.params.id);
+
+  audit.emit({
+    actorId: user.id, actorName: user.name,
+    action: 'PATCH_APPROVED', targetType: 'patch', targetId: req.params.id,
+    summary: `${user.name} approved "${patch.title}"`,
+  });
+
+  res.json({ ok: true, status: 'APPROVED', patch: rowToObj(db.prepare('SELECT * FROM patches WHERE id = ?').get(req.params.id)) });
+});
+
+apiRouter.post('/patches/:id/request-changes', (req, res) => {
+  const user = getUserFromHeader(req);
+  const db = getDb();
+  const patch = db.prepare('SELECT * FROM patches WHERE id = ?').get(req.params.id) as any;
+  if (!patch) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Patch not found' } });
+  if (!['DRAFT', 'IN_REVIEW'].includes(patch.status)) {
+    return res.status(409).json({ error: { code: 'ILLEGAL_TRANSITION', message: `Cannot request changes from ${patch.status}` } });
+  }
+
+  if (user.role !== 'REVIEWER' && user.role !== 'ADMIN') {
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only REVIEWER or ADMIN can request changes' } });
+  }
+
+  const { comment } = req.body || {};
+  const reviewId = nanoid(10);
+  const now = new Date().toISOString();
+
+  db.prepare('INSERT INTO reviews (id, patchId, reviewerId, decision, comment, createdAt) VALUES (?, ?, ?, ?, ?, ?)').run(
+    reviewId, req.params.id, user.id, 'CHANGES_REQUESTED', comment || 'Changes requested', now,
+  );
+
+  db.prepare("UPDATE patches SET status = 'DRAFT', updatedAt = ? WHERE id = ?").run(now, req.params.id);
+
+  audit.emit({
+    actorId: user.id, actorName: user.name,
+    action: 'PATCH_CHANGES_REQUESTED', targetType: 'patch', targetId: req.params.id,
+    summary: `${user.name} requested changes on "${patch.title}"`,
+  });
+
+  res.json({ ok: true, status: 'DRAFT', patch: rowToObj(db.prepare('SELECT * FROM patches WHERE id = ?').get(req.params.id)) });
+});
+
 apiRouter.post('/patches/:id/review', (req, res) => {
   const user = getUserFromHeader(req);
   const db = getDb();
   const patch = db.prepare('SELECT * FROM patches WHERE id = ?').get(req.params.id) as any;
   if (!patch) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Patch not found' } });
-  if (patch.status !== 'IN_REVIEW') return res.status(409).json({ error: { code: 'ILLEGAL_TRANSITION', message: `Cannot review from ${patch.status}` } });
+  if (!['DRAFT', 'IN_REVIEW'].includes(patch.status)) {
+    return res.status(409).json({ error: { code: 'ILLEGAL_TRANSITION', message: `Cannot review from ${patch.status}` } });
+  }
 
   if (user.role !== 'REVIEWER' && user.role !== 'ADMIN') {
     return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only REVIEWER or ADMIN can review' } });
   }
 
-  if (user.id === patch.authorId && user.role !== 'ADMIN') {
-    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Cannot review your own patch' } });
-  }
-
   const { decision, comment } = req.body;
   if (!['APPROVED', 'CHANGES_REQUESTED', 'REJECTED'].includes(decision)) {
     return res.status(422).json({ error: { code: 'VALIDATION', message: 'Invalid decision' } });
+  }
+
+  if (decision === 'APPROVED') {
+    const openConflicts = db.prepare("SELECT COUNT(*) as c FROM conflicts WHERE (patchAId = ? OR patchBId = ?) AND status = 'OPEN'").get(req.params.id, req.params.id) as any;
+    if (openConflicts && openConflicts.c > 0) {
+      return res.status(409).json({ error: { code: 'OPEN_CONFLICT', message: 'Resolve open conflicts before approving' } });
+    }
   }
 
   const reviewId = nanoid(10);

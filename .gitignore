@@ -24,3 +24,8 @@ env
 # OS / Editor files
 .DS_Store
 Thumbs.db
+
+# Generated screenshots and test artifacts
+server/artifacts/*
+!server/artifacts/.gitkeep
+artifacts/

@@ -9,6 +9,8 @@ import {
   Code2,
   ExternalLink,
   Save,
+  AlertTriangle,
+  Trash2,
 } from 'lucide-react';
 import { api } from '../api';
 
@@ -44,6 +46,27 @@ export const Settings: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['overview'] });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
+    },
+  });
+
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+
+  // Global reset mutation
+  const resetSystemMutation = useMutation({
+    mutationFn: () => api.post('/api/system/reset'),
+    onSuccess: () => {
+      queryClient.clear();
+      queryClient.invalidateQueries();
+      setConfirmReset(false);
+      setResetSuccess(true);
+      setResetError(null);
+      setTimeout(() => setResetSuccess(false), 5000);
+    },
+    onError: (err: any) => {
+      setResetError(err.message || 'Failed to reset system');
+      setConfirmReset(false);
     },
   });
 
@@ -220,6 +243,89 @@ export const Settings: React.FC = () => {
             />
             <div className="w-11 h-6 bg-surface-3 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
           </label>
+        </div>
+      </div>
+
+      {/* Global Reset / Danger Zone */}
+      <div className="p-6 rounded-lg bg-surface-1 border border-danger/30 space-y-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-bold text-danger flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-danger" />
+              Global System Reset
+            </h2>
+            <p className="text-xs text-text-muted mt-1 leading-relaxed max-w-xl">
+              Permanently wipe all scans, detected issues, candidate & approved patches, releases, test runs, and audit logs.
+              Restores PATCHWORK to a fresh, clean factory state.
+            </p>
+          </div>
+        </div>
+
+        {/* Success / Error Alerts */}
+        {resetSuccess && (
+          <div className="p-3 rounded-md bg-accent/10 border border-accent/30 text-xs text-accent flex items-center gap-2">
+            <Check className="w-4 h-4 shrink-0" />
+            <span>Global reset successful! All databases and stored artifacts have been restored to clean factory defaults.</span>
+          </div>
+        )}
+
+        {resetError && (
+          <div className="p-3 rounded-md bg-danger-soft border border-danger/40 text-xs text-danger flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>{resetError}</span>
+          </div>
+        )}
+
+        <div className="pt-2 border-t border-border/60">
+          {!confirmReset ? (
+            <button
+              type="button"
+              onClick={() => setConfirmReset(true)}
+              className="px-4 py-2 rounded bg-danger/10 hover:bg-danger text-danger hover:text-white border border-danger/30 text-xs font-semibold flex items-center gap-2 transition-all"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset Everything</span>
+            </button>
+          ) : (
+            <div className="p-4 rounded-lg bg-danger/10 border border-danger/40 space-y-3">
+              <div className="text-xs font-semibold text-danger flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>Confirm Global Reset: Are you sure you want to reset everything?</span>
+              </div>
+              <p className="text-[11px] text-text-muted leading-relaxed">
+                This will wipe all patches (draft and approved), releases, automated test history, scanner issues, and screenshot artifacts.
+                This operation cannot be undone.
+              </p>
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => resetSystemMutation.mutate()}
+                  disabled={resetSystemMutation.isPending}
+                  className="px-4 py-2 rounded bg-danger text-white hover:bg-danger/90 text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors"
+                >
+                  {resetSystemMutation.isPending ? (
+                    <>
+                      <RotateCcw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Wiping System...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Yes, Wipe & Reset Everything</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmReset(false)}
+                  disabled={resetSystemMutation.isPending}
+                  className="px-3.5 py-2 rounded bg-surface-2 hover:bg-surface-3 text-text-muted hover:text-text border border-border text-xs font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
